@@ -119,6 +119,14 @@
                     <input type="checkbox" class="form-check-input" id="generateInvoice">
                     <label class="form-check-label" for="generateInvoice">Rechnung als PDF generieren</label>
                 </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="sendEmail" onchange="toggleEmailInput()">
+                    <label class="form-check-label" for="sendEmail">Rechnung per E-Mail senden</label>
+                </div>
+                <div class="form-group" id="emailInputGroup" style="display: none;">
+                    <label for="emailAddress">E-Mail-Adresse</label>
+                    <input type="email" class="form-control" id="emailAddress" placeholder="E-Mail-Adresse eingeben">
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
@@ -202,20 +210,39 @@
         document.getElementById('totalPrice').innerText = `${totalPrice}€`;
     }
 
+    function toggleEmailInput() {
+        const sendEmail = document.getElementById('sendEmail').checked;
+        const emailInputGroup = document.getElementById('emailInputGroup');
+        if (sendEmail) {
+            emailInputGroup.style.display = 'block';
+        } else {
+            emailInputGroup.style.display = 'none';
+        }
+    }
+
     function completeSale() {
         const generateInvoice = document.getElementById('generateInvoice').checked;
+        const sendEmail = document.getElementById('sendEmail').checked;
+        const emailAddress = document.getElementById('emailAddress').value;
         $.ajax({
             url: "{{ url_for('complete_sale') }}",
             type: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ cart: cart, generate_invoice: generateInvoice }),
-            success: function(response) {
+            data: JSON.stringify({ cart: cart, generate_invoice: generateInvoice, send_email: sendEmail, email_address: emailAddress }),
+            xhrFields: {
+                responseType: 'blob'
+            },
+            success: function(response, status, xhr) {
                 cart = [];
                 updateCart();
                 $('#checkoutModal').modal('hide');
                 showAlert('success', 'Verkauf erfolgreich abgeschlossen');
-                if (response.invoice_path) {
-                    window.open("/static/" + response.invoice_path, '_blank');
+                if (generateInvoice) {
+                    const blob = new Blob([response], { type: 'application/pdf' });
+                    const link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = 'invoice.pdf';
+                    link.click();
                 }
                 setTimeout(() => {
                     window.location.href = "{{ url_for('index') }}";

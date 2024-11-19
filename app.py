@@ -6,6 +6,7 @@ import json
 import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from email_service import send_invoice_email  # Importieren Sie die Funktion
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sales.db'
@@ -92,6 +93,8 @@ def complete_sale():
     seller_name = f"{seller.first_name} {seller.last_name}"
     cart = request.json.get('cart', [])
     generate_invoice = request.json.get('generate_invoice', False)
+    send_email = request.json.get('send_email', False)
+    email_address = request.json.get('email_address', '')
     invoice_number = None
     invoice_path = None
 
@@ -106,7 +109,12 @@ def complete_sale():
     session.pop('seller_id', None)
     session.pop('cart', None)
     flash('Verkauf erfolgreich abgeschlossen und Verkäufer ausgeloggt', 'success')
-    return jsonify({'invoice_path': invoice_path if invoice_path else None}), 200
+    
+    if invoice_path:
+        if send_email and email_address:
+            send_invoice_email(email_address, os.path.join('static', invoice_path))
+        return send_file(os.path.join('static', invoice_path), as_attachment=True, mimetype='application/pdf')
+    return '', 204
 
 def generate_invoice_number():
     last_sale = Sale.query.order_by(Sale.id.desc()).first()
@@ -119,8 +127,8 @@ def generate_invoice_pdf(cart, invoice_number, seller_name):
     if not os.path.exists('static/invoices'):
         os.makedirs('static/invoices')
 
-    pdf_path = f'static/invoices/invoice_{invoice_number}.pdf'
-    c = canvas.Canvas(pdf_path, pagesize=letter)
+    pdf_path = f'invoices/invoice_{invoice_number}.pdf'
+    c = canvas.Canvas(os.path.join('static', pdf_path), pagesize=letter)
     width, height = letter
 
     # Logo
@@ -162,7 +170,7 @@ def generate_invoice_pdf(cart, invoice_number, seller_name):
     c.line(30, y + 10, width - 30, y + 10)
 
     # Total price with VAT
-    total_price_with_vat = total_price 
+    total_price_with_vat = total_price * 1.19
     c.setFont("Helvetica-Bold", 12)
     c.drawString(30, y - 10, f"Gesamtpreis (inkl. 19% MwSt): {total_price_with_vat:.2f}€")
 
@@ -172,7 +180,7 @@ def generate_invoice_pdf(cart, invoice_number, seller_name):
     c.drawString(30, y - 40, f"Diese Rechnung wurde maschinell erstellt und ist ohne Unterschrift gültig!")
 
     c.save()
-    return f'invoices/invoice_{invoice_number}.pdf'
+    return pdf_path
 
 @app.route('/logout')
 def logout():
