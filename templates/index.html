@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px; /* Größere Polsterung */
+            margin: 20px; /* Größerer Abstand */
+            transition: background-color 0.3s, box-shadow 0.3s;
+            text-align: center; /* Text zentrieren */
+            font-size: 1.5rem; /* Größere Schriftgröße */
+        }
+        .panel:hover {
+            background-color: #f8f9fa;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .alert-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        .navbar-brand img {
+            filter: invert(1);
+            width: 50px; /* Größere Breite */
+            height: 50px; /* Größere Höhe */
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .login-header p {
+            font-size: 1.2rem;
+            color: #6c757d;
+        }
+        .panel h3 {
+            font-size: 2rem; /* Größere Schriftgröße */
+            font-weight: bold;
+        }
+        .navbar {
+            display: flex;
+            justify-content: center;
+        }
+        .navbar-nav {
+            flex-direction: row;
+        }
+        .navbar-nav .nav-item {
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+        .navbar-collapse {
+            justify-content: center;
+        }
+        .employee-icon {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="d-inline-block align-top" alt="Logo">
+        Admin Dashboard
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav mr-auto">
+            <!-- Keine Kategorien anzeigen -->
+        </ul>
+        <button class="btn btn-outline-primary ml-auto" data-toggle="modal" data-target="#adminModal">Admin</button>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="login-header">
+        <h1>Login</h1>
+        <p>Wählen Sie Ihren Namen aus, um sich anzumelden</p>
+    </div>
+    <div class="row">
+        {% for seller in sellers %}
+            <div class="col-lg-3 col-md-4 col-sm-6 col-xs-12 mb-4">
+                <div class="panel" onclick="window.location.href='{{ url_for('login', seller_id=seller.id) }}'">
+                    <img src="{{ url_for('static', filename='employee_icon.png') }}" class="employee-icon" alt="Employee Icon">
+                    <h3>{{ seller.first_name }} {{ seller.last_name }}</h3>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Admin Modal -->
+<div class="modal fade" id="adminModal" tabindex="-1" role="dialog" aria-labelledby="adminModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adminModalLabel">Admin Login</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="adminLoginForm">
+                    <div class="form-group">
+                        <label for="adminPassword">Passwort</label>
+                        <input type="password" class="form-control" id="adminPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    document.getElementById('adminLoginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const password = document.getElementById('adminPassword').value;
+        if (password === 'eisdiele1') {
+            window.location.href = '{{ url_for('admin_dashboard') }}';
+        } else {
+            alert('Falsches Passwort');
+        }
+    });
+</script>
+</body>
+</html>

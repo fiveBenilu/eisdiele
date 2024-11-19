@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sales Panel</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .panel:hover {
+            background-color: #f8f9fa;
+        }
+        .alert-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        .navbar-brand img {
+            filter: invert(1);
+        }
+        .btn-gray {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: white;
+        }
+        .btn-gray:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+        img {
+            filter: invert(1);
+            width: 40px;
+            height: 40px;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">
+        <img src="{{ url_for('static', filename='logo.png') }}" width="30" height="30" class="d-inline-block align-top" alt="Logo">
+        Admin Dashboard
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+            {% for category in categories %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showCategory({{ category.id }})">{{ category.name }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <button class="btn btn-gray ml-auto" data-toggle="modal" data-target="#checkoutModal">Checkout</button>
+    <a href="{{ url_for('logout') }}" class="btn btn-gray ml-2">Logout</a>
+</nav>
+
+<div class="container mt-4">
+    {% for category in categories %}
+        <div id="category-{{ category.id }}" class="category-content" style="display: none;">
+            <div class="row">
+                <div class="col-12">
+                    <h2>{{ category.name }}</h2>
+                </div>
+                {% for item in category.items %}
+                    <div class="col-md-4 col-sm-6 col-xs-12">
+                        <div class="panel" onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }})">
+                            <h3>{{ item.name }}</h3>
+                            <p>Preis: {{ item.price }}€</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal fade" id="checkoutModal" tabindex="-1" role="dialog" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="checkoutModalLabel">Checkout</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Artikel</th>
+                                <th>Menge</th>
+                                <th>Preis</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartItems">
+                            <!-- Warenkorb-Artikel werden hier dynamisch eingefügt -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="2">Gesamt</th>
+                                <th id="totalPrice">0€</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="generateInvoice">
+                    <label class="form-check-label" for="generateInvoice">Rechnung als PDF generieren</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+                <button type="button" class="btn btn-success" onclick="completeSale()">Verkauf abschließen</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    let cart = [];
+
+    function showCategory(categoryId) {
+        // Alle Kategorien ausblenden
+        document.querySelectorAll('.category-content').forEach(function(element) {
+            element.style.display = 'none';
+        });
+        // Ausgewählte Kategorie anzeigen
+        document.getElementById('category-' + categoryId).style.display = 'block';
+    }
+
+    function addToCart(itemId, itemName, itemPrice) {
+        const item = cart.find(i => i.id === itemId);
+        if (item) {
+            item.quantity += 1;
+        } else {
+            cart.push({ id: itemId, name: itemName, price: itemPrice, quantity: 1 });
+        }
+        updateCart();
+        showAlert('success', `Artikel "${itemName}" zum Warenkorb hinzugefügt`);
+    }
+
+    function removeFromCart(itemId) {
+        cart = cart.filter(item => item.id !== itemId);
+        updateCart();
+    }
+
+    function updateQuantity(itemId, quantity) {
+        const item = cart.find(i => i.id === itemId);
+        if (item) {
+            item.quantity = parseInt(quantity);
+        }
+        updateCart();
+    }
+
+    function updateCart() {
+        const cartItems = document.getElementById('cartItems');
+        cartItems.innerHTML = '';
+        let totalPrice = 0;
+
+        cart.forEach(item => {
+            const itemElement = document.createElement('tr');
+            itemElement.innerHTML = `
+                <td>${item.name}</td>
+                <td><input type="number" value="${item.quantity}" min="1" onchange="updateQuantity(${item.id}, this.value)"></td>
+                <td>${item.price * item.quantity}€</td>
+                <td><button class="btn btn-danger btn-sm" onclick="removeFromCart(${item.id})">Löschen</button></td>
+            `;
+            cartItems.appendChild(itemElement);
+            totalPrice += item.price * item.quantity;
+        });
+
+        document.getElementById('totalPrice').innerText = `${totalPrice}€`;
+    }
+
+    function completeSale() {
+        const generateInvoice = document.getElementById('generateInvoice').checked;
+        $.ajax({
+            url: "{{ url_for('complete_sale') }}",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ cart: cart, generate_invoice: generateInvoice }),
+            success: function(response) {
+                cart = [];
+                updateCart();
+                $('#checkoutModal').modal('hide');
+                showAlert('success', 'Verkauf erfolgreich abgeschlossen');
+                if (response.invoice_path) {
+                    window.open("/static/" + response.invoice_path, '_blank');
+                }
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('index') }}";
+                }, 3000);
+            }
+        });
+    }
+
+    function showAlert(category, message) {
+        const alertContainer = document.querySelector('.alert-container');
+        const alertElement = document.createElement('div');
+        alertElement.className = `alert alert-${category} alert-dismissible fade show`;
+        alertElement.role = 'alert';
+        alertElement.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        alertContainer.appendChild(alertElement);
+        setTimeout(() => {
+            $(alertElement).alert('close');
+        }, 3000);
+    }
+
+    // Standardmäßig die erste Kategorie anzeigen
+    document.addEventListener('DOMContentLoaded', function() {
+        showCategory({{ categories[0].id }});
+    });
+</script>
+</body>
+</html>

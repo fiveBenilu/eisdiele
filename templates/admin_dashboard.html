@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .list-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .list-group-item .btn-group {
+            flex-shrink: 0;
+        }
+        .navbar-brand img {
+            filter: invert(1);
+        }
+        img {
+            filter: invert(1);
+            width: 40px;
+            height: 40px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">
+        <img src="{{ url_for('static', filename='logo.png') }}" width="30" height="30" class="d-inline-block align-top" alt="Logo">
+        Admin Dashboard
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <a class="nav-link active" id="sales-tab" data-toggle="tab" href="#sales" role="tab" aria-controls="sales" aria-selected="true">Verkaufsdaten</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="manage-tab" data-toggle="tab" href="#manage" role="tab" aria-controls="manage" aria-selected="false">Verwalten</a>
+            </li>
+        </ul>
+        <a href="{{ url_for('index') }}" class="btn btn-danger ml-auto">Logout</a>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="sales" role="tabpanel" aria-labelledby="sales-tab">
+            <h1>Verkaufsdaten</h1>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <select id="timeFilter" class="form-control">
+                        <option value="all_time">Gesamte Zeit</option>
+                        <option value="today">Heute</option>
+                        <option value="yesterday">Gestern</option>
+                        <option value="last_3_days">Letzte 3 Tage</option>
+                        <option value="this_week">Diese Woche</option>
+                        <option value="this_month">Dieser Monat</option>
+                        <option value="last_month">Letzter Monat</option>
+                        <option value="this_year">Dieses Jahr</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    Gesamtumsatz
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ total_sales }}€</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    Umsatz nach Verkäufer
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group">
+                                        {% for seller in sales_by_seller %}
+                                            <li class="list-group-item">
+                                                <span>{{ seller[0] }} {{ seller[1] }}: {{ seller[2] }}€</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    Umsatz nach Kategorie
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group">
+                                        {% for category in sales_by_category %}
+                                            <li class="list-group-item">
+                                                <span>{{ category[0] }}: {{ category[1] }}€</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <button class="btn btn-danger" onclick="deleteAllSales()">Verkaufsdaten endgültig löschen!</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <canvas id="hourlySalesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="manage" role="tabpanel" aria-labelledby="manage-tab">
+            <h1>Verwalten</h1>
+            <div class="row">
+                <div class="col-md-4">
+                    <h3>Artikel</h3>
+                    <ul class="list-group">
+                        {% for item in items %}
+                            <li class="list-group-item">
+                                <span>{{ item.name }} - {{ item.price }}€</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-primary" onclick="editItem({{ item.id }}, '{{ item.name }}', {{ item.price }}, {{ item.category_id }})">Bearbeiten</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteItem({{ item.id }})">Löschen</button>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button class="btn btn-success mt-2" onclick="addItem()">Artikel hinzufügen</button>
+                </div>
+                <div class="col-md-4">
+                    <h3>Kategorien</h3>
+                    <ul class="list-group">
+                        {% for category in categories %}
+                            <li class="list-group-item">
+                                <span>{{ category.name }}</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-primary" onclick="editCategory({{ category.id }}, '{{ category.name }}')">Bearbeiten</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteCategory({{ category.id }})">Löschen</button>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button class="btn btn-success mt-2" onclick="addCategory()">Kategorie hinzufügen</button>
+                </div>
+                <div class="col-md-4">
+                    <h3>Verkäufer</h3>
+                    <ul class="list-group">
+                        {% for seller in sellers %}
+                            <li class="list-group-item">
+                                <img src="{{ url_for('static', filename='employee_icon.png') }}" class="employee-icon" alt="Employee Icon">
+                                <span>{{ seller.first_name }} {{ seller.last_name }}</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-primary" onclick="editSeller({{ seller.id }}, '{{ seller.first_name }}', '{{ seller.last_name }}')">Bearbeiten</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteSeller({{ seller.id }})">Löschen</button>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button class="btn btn-success mt-2" onclick="addSeller()">Verkäufer hinzufügen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal für Bearbeiten und Hinzufügen -->
+<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Bearbeiten</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editId" name="id">
+                    <div class="form-group">
+                        <label for="editName">Name</label>
+                        <input type="text" class="form-control" id="editName" name="name" required>
+                    </div>
+                    <div class="form-group" id="editPriceGroup">
+                        <label for="editPrice">Preis</label>
+                        <input type="number" class="form-control" id="editPrice" name="price" step="0.01">
+                    </div>
+                    <div class="form-group" id="editCategoryGroup">
+                        <label for="editCategory">Kategorie</label>
+                        <select class="form-control" id="editCategory" name="category_id">
+                            <option value="" disabled selected>Wählen Sie eine Kategorie</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('timeFilter').addEventListener('change', function() {
+        const selectedValue = this.value;
+        window.location.href = `{{ url_for('admin_dashboard') }}?filter=${selectedValue}`;
+    });
+
+    // Set the selected value of the dropdown based on the current filter
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filter = urlParams.get('filter') || 'all_time';
+        document.getElementById('timeFilter').value = filter;
+
+        // Fetch hourly sales data for the chart
+        fetch('{{ url_for("get_hourly_sales_data") }}')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('hourlySalesChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Anzahl der Verkäufe pro Stunde',
+                            data: data.sales,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+
+        // Initialize Bootstrap tabs
+        $('#sales-tab').tab();
+        $('#manage-tab').tab();
+    });
+
+    function deleteItem(itemId) {
+        if (confirm('Sind Sie sicher, dass Sie diesen Artikel löschen möchten?')) {
+            window.location.href = `/delete_item/${itemId}`;
+        }
+    }
+
+    function editItem(itemId, itemName, itemPrice, categoryId) {
+        document.getElementById('editId').value = itemId;
+        document.getElementById('editName').value = itemName;
+        document.getElementById('editPrice').value = itemPrice;
+        document.getElementById('editCategory').value = categoryId;
+        document.getElementById('editPrice').setAttribute('required', 'required');
+        document.getElementById('editPriceGroup').style.display = 'block';
+        document.getElementById('editCategoryGroup').style.display = 'block';
+        document.getElementById('editCategory').setAttribute('required', 'required');
+        document.getElementById('editModalLabel').innerText = 'Artikel bearbeiten';
+        $('#editModal').modal('show');
+    }
+
+    function addItem() {
+        document.getElementById('editId').value = '';
+        document.getElementById('editName').value = '';
+        document.getElementById('editPrice').value = '';
+        document.getElementById('editCategory').value = '';
+        document.getElementById('editPrice').setAttribute('required', 'required');
+        document.getElementById('editCategory').setAttribute('required', 'required');
+        document.getElementById('editPriceGroup').style.display = 'block';
+        document.getElementById('editCategoryGroup').style.display = 'block';
+        document.getElementById('editModalLabel').innerText = 'Artikel hinzufügen';
+        $('#editModal').modal('show');
+    }
+
+    function deleteCategory(categoryId) {
+        if (confirm('Sind Sie sicher, dass Sie diese Kategorie löschen möchten?')) {
+            window.location.href = `/delete_category/${categoryId}`;
+        }
+    }
+
+    function editCategory(categoryId, categoryName) {
+        document.getElementById('editId').value = categoryId;
+        document.getElementById('editName').value = categoryName;
+        document.getElementById('editPrice').removeAttribute('required');
+        document.getElementById('editCategory').removeAttribute('required');
+        document.getElementById('editPriceGroup').style.display = 'none';
+        document.getElementById('editCategoryGroup').style.display = 'none';
+        document.getElementById('editModalLabel').innerText = 'Kategorie bearbeiten';
+        $('#editModal').modal('show');
+    }
+
+    function addCategory() {
+        document.getElementById('editId').value = '';
+        document.getElementById('editName').value = '';
+        document.getElementById('editPrice').removeAttribute('required');
+        document.getElementById('editCategory').removeAttribute('required');
+        document.getElementById('editPriceGroup').style.display = 'none';
+        document.getElementById('editCategoryGroup').style.display = 'none';
+        document.getElementById('editModalLabel').innerText = 'Kategorie hinzufügen';
+        $('#editModal').modal('show');
+    }
+
+    function deleteSeller(sellerId) {
+        if (confirm('Sind Sie sicher, dass Sie diesen Verkäufer löschen möchten?')) {
+            window.location.href = `/delete_seller/${sellerId}`;
+        }
+    }
+
+    function editSeller(sellerId, sellerFirstName, sellerLastName) {
+        document.getElementById('editId').value = sellerId;
+        document.getElementById('editName').value = `${sellerFirstName} ${sellerLastName}`;
+        document.getElementById('editPrice').removeAttribute('required');
+        document.getElementById('editCategory').removeAttribute('required');
+        document.getElementById('editPriceGroup').style.display = 'none';
+        document.getElementById('editCategoryGroup').style.display = 'none';
+        document.getElementById('editModalLabel').innerText = 'Verkäufer bearbeiten';
+        $('#editModal').modal('show');
+    }
+
+    function addSeller() {
+        document.getElementById('editId').value = '';
+        document.getElementById('editName').value = '';
+        document.getElementById('editPrice').removeAttribute('required');
+        document.getElementById('editCategory').removeAttribute('required');
+        document.getElementById('editPriceGroup').style.display = 'none';
+        document.getElementById('editCategoryGroup').style.display = 'none';
+        document.getElementById('editModalLabel').innerText = 'Verkäufer hinzufügen';
+        $('#editModal').modal('show');
+    }
+
+    function deleteAllSales() {
+        if (confirm('Sind Sie sicher, dass Sie alle Verkaufsdaten löschen möchten?')) {
+            fetch('/delete_all_sales', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Fehler beim Löschen der Verkaufsdaten');
+                }
+            });
+        }
+    }
+
+    document.getElementById('editForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const id = document.getElementById('editId').value;
+        const name = document.getElementById('editName').value;
+        const price = document.getElementById('editPrice').value;
+        const categoryId = document.getElementById('editCategory').value;
+        let url = '';
+
+        if (document.getElementById('editModalLabel').innerText.includes('Artikel')) {
+            url = id ? `/edit_item/${id}` : `/add_item`;
+        } else if (document.getElementById('editModalLabel').innerText.includes('Kategorie')) {
+            url = id ? `/edit_category/${id}` : `/add_category`;
+        } else if (document.getElementById('editModalLabel').innerText.includes('Verkäufer')) {
+            url = id ? `/edit_seller/${id}` : `/add_seller`;
+        }
+
+        const data = {
+            name: name,
+            price: price,
+            category_id: categoryId
+        };
+
+        console.log('Form Data:', data);
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Fehler beim Speichern');
+            }
+        });
+    });
+</script>
+</body>
+</html>
