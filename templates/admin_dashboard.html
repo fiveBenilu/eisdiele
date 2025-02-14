@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <style>
         .list-group-item {
             display: flex;
@@ -75,7 +75,7 @@
                                     Gesamtumsatz
                                 </div>
                                 <div class="card-body">
-                                    <h5 class="card-title">{{ total_sales }}€</h5>
+                                    <h5 class="card-title">{{ (total_sales or 0) | round(2) }}€</h5>
                                 </div>
                             </div>
                         </div>
@@ -88,7 +88,7 @@
                                     <ul class="list-group">
                                         {% for seller in sales_by_seller %}
                                             <li class="list-group-item">
-                                                <span>{{ seller[0] }} {{ seller[1] }}: {{ seller[2] }}€</span>
+                                                <span>{{ seller[0] }} {{ seller[1] }}: {{ (seller[2] or 0) | round(2) }}€</span>
                                             </li>
                                         {% endfor %}
                                     </ul>
@@ -104,7 +104,7 @@
                                     <ul class="list-group">
                                         {% for category in sales_by_category %}
                                             <li class="list-group-item">
-                                                <span>{{ category[0] }}: {{ category[1] }}€</span>
+                                                <span>{{ category[0] }}: {{ (category[1] or 0) | round(2) }}€</span>
                                             </li>
                                         {% endfor %}
                                     </ul>
@@ -131,7 +131,7 @@
                     <ul class="list-group">
                         {% for item in items %}
                             <li class="list-group-item">
-                                <span>{{ item.name }} - {{ item.price }}€</span>
+                                <span>{{ item.name }} - {{ (item.price or 0) | round(2) }}€</span>
                                 <div class="btn-group">
                                     <button class="btn btn-sm btn-primary" onclick="editItem({{ item.id }}, '{{ item.name }}', {{ item.price }}, {{ item.category_id }})">Bearbeiten</button>
                                     <button class="btn btn-sm btn-danger" onclick="deleteItem({{ item.id }})">Löschen</button>

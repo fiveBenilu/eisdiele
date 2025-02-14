@@ -6,7 +6,7 @@ import json
 import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from email_service import send_invoice_email  # Importieren Sie die Funktion
+import asyncore
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sales.db'
@@ -36,6 +36,7 @@ class Sale(db.Model):
     seller_id = db.Column(db.Integer, db.ForeignKey('seller.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     quantity = db.Column(db.Integer, nullable=False)
+    invoice_path = db.Column(db.String(255), nullable=True)  # Neues Feld für den Pfad zur Rechnung
 
 @app.route('/')
 def index():
@@ -103,7 +104,7 @@ def complete_sale():
         invoice_path = generate_invoice_pdf(cart, invoice_number, seller_name)
 
     for item in cart:
-        sale = Sale(item_id=item['id'], seller_id=seller_id, quantity=item['quantity'])
+        sale = Sale(item_id=item['id'], seller_id=seller_id, quantity=item['quantity'], invoice_path=invoice_path)
         db.session.add(sale)
     db.session.commit()
     session.pop('seller_id', None)
@@ -111,9 +112,10 @@ def complete_sale():
     flash('Verkauf erfolgreich abgeschlossen und Verkäufer ausgeloggt', 'success')
     
     if invoice_path:
-        if send_email and email_address:
-            send_invoice_email(email_address, os.path.join('static', invoice_path))
-        return send_file(os.path.join('static', invoice_path), as_attachment=True, mimetype='application/pdf')
+        full_invoice_path = os.path.join('static/invoices', invoice_path)
+        # if send_email and email_address:
+        #     send_invoice_email(email_address, full_invoice_path)
+        return send_file(full_invoice_path, as_attachment=True, mimetype='application/pdf')
     return '', 204
 
 def generate_invoice_number():
@@ -127,8 +129,9 @@ def generate_invoice_pdf(cart, invoice_number, seller_name):
     if not os.path.exists('static/invoices'):
         os.makedirs('static/invoices')
 
-    pdf_path = f'invoices/invoice_{invoice_number}.pdf'
-    c = canvas.Canvas(os.path.join('static', pdf_path), pagesize=letter)
+    pdf_filename = f'invoice_{invoice_number}.pdf'
+    pdf_path = os.path.join('static/invoices', pdf_filename)
+    c = canvas.Canvas(pdf_path, pagesize=letter)
     width, height = letter
 
     # Logo
@@ -170,9 +173,10 @@ def generate_invoice_pdf(cart, invoice_number, seller_name):
     c.line(30, y + 10, width - 30, y + 10)
 
     # Total price with VAT
-    total_price_with_vat = total_price * 1.19
+    total_price_with_vat = total_price / 1.19
+    
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(30, y - 10, f"Gesamtpreis (inkl. 19% MwSt): {total_price_with_vat:.2f}€")
+    c.drawString(30, y - 10, f"Nettopreis: {total_price_with_vat:.2f}€                          " + f" Gesamtpreis (inkl. MwSt. 19%): {total_price:.2f}€")
 
     # Draw a line
     c.line(30, y - 20, width - 30, y - 20)
@@ -180,7 +184,7 @@ def generate_invoice_pdf(cart, invoice_number, seller_name):
     c.drawString(30, y - 40, f"Diese Rechnung wurde maschinell erstellt und ist ohne Unterschrift gültig!")
 
     c.save()
-    return pdf_path
+    return pdf_filename
 
 @app.route('/logout')
 def logout():
@@ -376,5 +380,49 @@ def delete_all_sales():
         flash(f'Fehler beim Löschen der Verkaufsdaten: {str(e)}', 'danger')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/get_history')
+def get_history():
+    return render_template('history.html')
+
+
+@app.route('/invoice/<path:filename>')
+def get_invoice(filename):
+    return send_file(os.path.join('static/invoices', filename), as_attachment=True, mimetype='application/pdf')
+
+@app.route('/get_transactions', methods=['POST'])
+def get_transactions():
+    data = request.get_json()
+    period = data.get('period', '24h')
+    now = datetime.now()
+
+    if period == '24h':
+        start_date = now - timedelta(hours=24)
+    elif period == '2_days':
+        start_date = now - timedelta(days=2)
+    elif period == '7_days':
+        start_date = now - timedelta(days=7)
+    elif period == '30_days':
+        start_date = now - timedelta(days=30)
+    elif period == 'this_year':
+        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        return jsonify({'error': 'Invalid period specified'}), 400
+
+    transactions = db.session.query(Sale).filter(Sale.timestamp >= start_date).all()
+    transactions_data = [{
+        'sale_id': transaction.id,
+        'item_id': transaction.item_id,
+        'seller_id': transaction.seller_id,
+        'timestamp': transaction.timestamp.strftime('%a, %d %b %Y %H:%M:%S GMT'),
+        'quantity': transaction.quantity,
+        'invoice_path': transaction.invoice_path.replace('static/', '') if transaction.invoice_path else None
+    } for transaction in transactions]
+
+    return jsonify({'transactions': transactions_data})
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    try:
+        app.run(host='0.0.0.0',debug=True, port=5001)
+    finally:
+        print("Shutting down SMTP server...")
+        asyncore.close_all()

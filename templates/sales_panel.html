@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Sales Panel</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <style>
         .panel {
             border: 1px solid #ddd;
@@ -27,16 +27,16 @@
         .btn-gray {
             background-color: #6c757d;
             border-color: #6c757d;
-            color: white;
+            color: white.
         }
         .btn-gray:hover {
             background-color: #5a6268;
-            border-color: #545b62;
+            border-color: #545b62.
         }
         img {
             filter: invert(1);
             width: 40px;
-            height: 40px;
+            height: 40px.
         }
     </style>
 </head>
@@ -118,14 +118,6 @@
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="generateInvoice">
                     <label class="form-check-label" for="generateInvoice">Rechnung als PDF generieren</label>
-                </div>
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="sendEmail" onchange="toggleEmailInput()">
-                    <label class="form-check-label" for="sendEmail">Rechnung per E-Mail senden</label>
-                </div>
-                <div class="form-group" id="emailInputGroup" style="display: none;">
-                    <label for="emailAddress">E-Mail-Adresse</label>
-                    <input type="email" class="form-control" id="emailAddress" placeholder="E-Mail-Adresse eingeben">
                 </div>
             </div>
             <div class="modal-footer">
@@ -210,25 +202,13 @@
         document.getElementById('totalPrice').innerText = `${totalPrice}€`;
     }
 
-    function toggleEmailInput() {
-        const sendEmail = document.getElementById('sendEmail').checked;
-        const emailInputGroup = document.getElementById('emailInputGroup');
-        if (sendEmail) {
-            emailInputGroup.style.display = 'block';
-        } else {
-            emailInputGroup.style.display = 'none';
-        }
-    }
-
     function completeSale() {
         const generateInvoice = document.getElementById('generateInvoice').checked;
-        const sendEmail = document.getElementById('sendEmail').checked;
-        const emailAddress = document.getElementById('emailAddress').value;
         $.ajax({
             url: "{{ url_for('complete_sale') }}",
             type: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ cart: cart, generate_invoice: generateInvoice, send_email: sendEmail, email_address: emailAddress }),
+            data: JSON.stringify({ cart: cart, generate_invoice: generateInvoice }),
             xhrFields: {
                 responseType: 'blob'
             },

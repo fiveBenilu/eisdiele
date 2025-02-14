@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Login</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <style>
         .panel {
             border: 1px solid #ddd;
@@ -81,6 +81,7 @@
             <!-- Keine Kategorien anzeigen -->
         </ul>
         <button class="btn btn-outline-primary ml-auto" data-toggle="modal" data-target="#adminModal">Admin</button>
+        <button class="btn btn-outline-secondary ml-2" onclick="window.location.href='{{ url_for('get_history') }}'">Verlauf</button>
     </div>
 </nav>
 
